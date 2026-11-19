@@ -22,6 +22,7 @@ export const CLAUDE_FOCUS_COMMAND = 'claude-vscode.focus';
 export const STATE_PRIVACY = 'hebrewMode.privacyAccepted';
 export const STATE_MODEL = 'hebrewMode.pickedModel';
 export const STATE_COUNTER = 'hebrewMode.dailyCount';
+export const STATE_WELCOMED = 'hebrewMode.welcomed';
 
 /** Ctrl+Alt+H refuses text that is at least this Hebrew (it is already Hebrew). */
 const ALREADY_HEBREW_RATIO = 0.5;
@@ -32,6 +33,8 @@ export interface Config {
   /** Exact model id from settings, or '' to pick automatically. */
   modelOverride: string;
   glossary: string[];
+  /** Run claude-vscode.focus after putting text on the clipboard. */
+  focusClaude: boolean;
 }
 
 export interface Host {
@@ -45,8 +48,11 @@ export interface Host {
   status(message: string): void;
   /** Modal dialog; true only when the confirm button was chosen. */
   confirm(kind: 'warning' | 'info', message: string, detail: string, confirmLabel: string): Promise<boolean>;
-  progress<T>(title: string, task: () => Promise<T>): Promise<T>;
+  /** Progress notification with a cancel button; the signal aborts when the user cancels. */
+  progress<T>(title: string, task: (cancel: AbortSignal) => Promise<T>): Promise<T>;
   showPanel(hebrew: string): void;
+  /** Opens the Hebrew usage guide. */
+  showGuide(): Promise<void>;
   /** Runs claude-vscode.focus. False when the command does not exist or failed. */
   focusClaude(): Promise<boolean>;
   openExternal(url: string): Promise<void>;
@@ -121,7 +127,9 @@ export class HebrewModeApp {
       return;
     }
     await this.host.writeClipboard(this.lastHebrew);
-    if (await this.host.focusClaude()) this.host.status(MESSAGES.draftRestored);
+    const { focusClaude } = await this.host.config();
+    if (!focusClaude) this.host.status(MESSAGES.draftRestored);
+    else if (await this.host.focusClaude()) this.host.status(MESSAGES.draftRestored);
     else void this.host.info(MESSAGES.draftRestoredNoFocus);
   }
 
@@ -134,6 +142,15 @@ export class HebrewModeApp {
       });
     }
     return this.settingUp;
+  }
+
+  /** Once after installation: say what is needed to start, with buttons for key setup and the guide. */
+  async welcome(): Promise<void> {
+    if (this.host.getState<boolean>(STATE_WELCOMED)) return;
+    await this.host.setState(STATE_WELCOMED, true);
+    const choice = await this.host.info(MESSAGES.welcome, MESSAGES.welcomeSetKey, MESSAGES.welcomeGuide);
+    if (choice === MESSAGES.welcomeSetKey) await this.setApiKey();
+    else if (choice === MESSAGES.welcomeGuide) await this.host.showGuide();
   }
 
   get todayCount(): number {
@@ -189,7 +206,8 @@ export class HebrewModeApp {
       return;
     }
     await this.host.writeClipboard(english);
-    if (await this.host.focusClaude()) this.host.status(MESSAGES.englishReady);
+    if (!cfg.focusClaude) this.host.status(MESSAGES.englishReadyNoFocus);
+    else if (await this.host.focusClaude()) this.host.status(MESSAGES.englishReady);
     else void this.host.info(MESSAGES.focusMissing);
   }
 
@@ -226,12 +244,16 @@ export class HebrewModeApp {
       try {
         const model = await this.resolveModel(cfg);
         const title = direction === 'he-en' ? MESSAGES.translatingToEnglish : MESSAGES.translatingToHebrew;
-        const result = await this.host.progress(title, () =>
-          this.gemini.translate({ text, direction, model, glossary: cfg.glossary, extraSpans }),
+        const result = await this.host.progress(title, (cancel) =>
+          this.gemini.translate({ text, direction, model, glossary: cfg.glossary, extraSpans }, cancel),
         );
         if (result.sent) await this.countTranslation();
         return result.text;
       } catch (e) {
+        if (isTranslationError(e, 'cancelled')) {
+          this.host.status(MESSAGES.cancelled);
+          return undefined;
+        }
         if (attempt === 0 && isTranslationError(e, 'missingKey', 'invalidKey')) {
           this.warnKey(e.message);
           if (await this.setApiKey()) continue;
@@ -261,6 +283,8 @@ export class HebrewModeApp {
       return;
     }
     switch (e.kind) {
+      case 'overloaded':
+      case 'serverError':
       case 'rateLimitMinute':
       case 'quotaDaily':
         void this.host.warn(e.message);

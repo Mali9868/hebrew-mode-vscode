@@ -65,6 +65,11 @@
         "command": "hebrewMode.setApiKey",
         "title": "Set API Key (הגדרת מפתח)",
         "category": "Hebrew Mode"
+      },
+      {
+        "command": "hebrewMode.showGuide",
+        "title": "Show Guide (מדריך)",
+        "category": "Hebrew Mode"
       }
     ],
     "keybindings": [
@@ -92,6 +97,12 @@
           "default": true,
           "scope": "window",
           "markdownDescription": "כשההגדרה כבויה, Hebrew Mode לא שולח שום טקסט ל-Gemini. כדאי לכבות אותה בהגדרות ה-Workspace של פרויקט רגיש, למשל ריפו של לקוחה."
+        },
+        "hebrewMode.focusClaude": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "markdownDescription": "אחרי תרגום לאנגלית, להחזיר את הסמן לשדה של Claude Code (הפקודה `claude-vscode.focus`). כדאי לכבות אם הסמן קופץ למקום אחר, למשל כשחלון Claude מנותק לחלון נפרד או כשפתוחים שני חלונות Claude זה לצד זה."
         },
         "hebrewMode.modelTier": {
           "type": "string",
@@ -126,7 +137,7 @@
     }
   },
   "scripts": {
-    "compile": "tsc -p .",
+    "compile": "tsc -p . && node scripts/build-store-docs.js",
     "test": "tsc -p . && node --test out/test/*.test.js",
     "package": "tsc -p . && node scripts/build-store-docs.js && vsce package --no-dependencies --readme-path build/README.md --changelog-path build/CHANGELOG.md"
   },

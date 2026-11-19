@@ -88,3 +88,10 @@ test('panel: translated text cannot inject markup or break out of the script', (
   const html = panelHtml('</script><script>alert(1)</script>', 'n');
   assert.equal((html.match(/<script/g) ?? []).length, 1);
 });
+
+test('panel with a custom action: the guide gets a key setup button that posts its own message', () => {
+  const html = panelHtml('# מדריך', 'n', { id: 'setKey', label: 'הגדרת מפתח' });
+  assert.match(html, /<button id="setKey" type="button">הגדרת מפתח<\/button>/);
+  assert.match(html, /const id = "setKey";/);
+  assert.ok(!html.includes('id="copy"'));
+});

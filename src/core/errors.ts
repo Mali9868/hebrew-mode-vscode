@@ -13,7 +13,11 @@ export type ErrorKind =
   | 'badResponse'
   | 'blocked'
   | 'modelUnavailable'
-  | 'placeholders';
+  | 'placeholders'
+  | 'overloaded'
+  | 'serverError'
+  | 'unsupportedLocation'
+  | 'cancelled';
 
 export class TranslationError extends Error {
   constructor(

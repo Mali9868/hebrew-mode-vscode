@@ -98,7 +98,8 @@ export class GeminiService {
     return model;
   }
 
-  async translate(req: TranslateRequest): Promise<TranslateResult> {
+  /** `cancel` aborts the request when the user cancels the progress notification. */
+  async translate(req: TranslateRequest, cancel?: AbortSignal): Promise<TranslateResult> {
     const protectedText = protect(req.text, { glossary: req.glossary, extraSpans: req.extraSpans, direction: req.direction });
     if (protectedText.onlyProtected) {
       return { text: req.text, fromCache: false, sent: false };
@@ -117,7 +118,7 @@ export class GeminiService {
     const lead = /^\s*/.exec(protectedText.text)?.[0] ?? '';
     const trail = /\s*$/.exec(protectedText.text)?.[0] ?? '';
     const core = protectedText.text.slice(lead.length, protectedText.text.length - trail.length);
-    let translated = (await this.generate(key, req.model, req.direction, core)).trim();
+    let translated = (await this.generate(key, req.model, req.direction, core, cancel)).trim();
     if (req.direction === 'he-en') translated = translated.replace(BIDI_CONTROLS, '');
     const raw = lead + translated + trail;
 
@@ -151,7 +152,7 @@ export class GeminiService {
     return key;
   }
 
-  private async generate(key: string, model: string, direction: Direction, text: string): Promise<string> {
+  private async generate(key: string, model: string, direction: Direction, text: string, cancel?: AbortSignal): Promise<string> {
     const url = `${API_BASE}/models/${encodeURIComponent(model)}:generateContent`;
     const thinkingConfig = majorVersion(model) >= 3 ? { thinkingLevel: 'minimal' } : { thinkingBudget: 0 };
     const makeBody = (withThinking: boolean): string =>
@@ -163,20 +164,23 @@ export class GeminiService {
 
     let body: string;
     try {
-      body = await this.request('POST', url, key, makeBody(true));
+      body = await this.request('POST', url, key, makeBody(true), cancel);
     } catch (e) {
       // Some models reject thinking settings. Retry once without them.
-      if (e instanceof ThinkingConfigRejected) body = await this.request('POST', url, key, makeBody(false));
+      if (e instanceof ThinkingConfigRejected) body = await this.request('POST', url, key, makeBody(false), cancel);
       else throw e;
     }
     return parseGenerateResponse(body);
   }
 
   /** One HTTPS request with a timeout and one retry on transient network errors only. */
-  private async request(method: string, url: string, key: string, body?: string): Promise<string> {
+  private async request(method: string, url: string, key: string, body?: string, cancel?: AbortSignal): Promise<string> {
     for (let attempt = 0; attempt < 2; attempt++) {
+      if (cancel?.aborted) throw new TranslationError('cancelled', MESSAGES.cancelled);
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+      const onCancel = (): void => controller.abort();
+      cancel?.addEventListener('abort', onCancel);
       try {
         const res = await this.fetchImpl(url, {
           method,
@@ -189,10 +193,12 @@ export class GeminiService {
         throw this.mapHttpError(res.status, text, key);
       } catch (e) {
         if (e instanceof TranslationError || e instanceof ThinkingConfigRejected) throw e;
+        if (cancel?.aborted) throw new TranslationError('cancelled', MESSAGES.cancelled);
         if (controller.signal.aborted) throw new TranslationError('timeout', MESSAGES.timeout);
         // Transient network error (DNS, reset, refused): retry once. The raw error is never surfaced.
       } finally {
         clearTimeout(timer);
+        cancel?.removeEventListener('abort', onCancel);
       }
     }
     throw new TranslationError('network', MESSAGES.failed);
@@ -231,6 +237,11 @@ export class GeminiService {
       return new TranslationError('rateLimitMinute', MESSAGES.rateLimitMinute(retryAfterSec), { status, retryAfterSec });
     }
     if (status === 404) return new TranslationError('modelUnavailable', MESSAGES.modelUnavailable, { status });
+    if (status === 400 && /location is not supported/i.test(message)) {
+      return new TranslationError('unsupportedLocation', MESSAGES.unsupportedLocation, { status });
+    }
+    if (status === 503) return new TranslationError('overloaded', MESSAGES.overloaded, { status });
+    if (status === 500 || status === 502 || status === 504) return new TranslationError('serverError', MESSAGES.serverError, { status });
     return new TranslationError('badResponse', MESSAGES.failed, { status });
   }
 }

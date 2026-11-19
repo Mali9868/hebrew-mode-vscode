@@ -18,33 +18,34 @@
 מה לא נבדק כאן, ולמה:
 
 - **תרגום אמיתי של Gemini.** לא היה מפתח API. כל זרימות התרגום נבדקו עם תשובות קבועות שמחליפות את Gemini (ראי "איך נבדק"). בדיקת המפתח עצמה כן רצה מול ה-API האמיתי של Google, עם מפתח לא תקין.
-- **התוסף האמיתי של Claude Code.** אין מהסביבה הזו גישה ל-Marketplace, אז הפקודה `claude-vscode.focus` נבדקה מול תחליף. לפי התיעוד של Claude Code, הקיצור Ctrl+Esc ("Focus Input") מחליף פוקוס בין העורך ל-Claude. צריך לוודא ידנית ש-`claude-vscode.focus` רק מעביר את הפוקוס לשדה (ולא מחליף הלוך ושוב), ושהטקסט בשדה נשאר מסומן כך ש-Ctrl+V מחליף אותו.
+- **התוסף האמיתי של Claude Code.** אין מהסביבה הזו גישה ל-Marketplace, אז הפקודה `claude-vscode.focus` נבדקה מול תחליף. דיווחי באגים פומביים בריפו של Claude Code ב-GitHub מראים ש-`claude-vscode.focus` רק מעביר את הפוקוס לשדה, ושיש פקודה נפרדת, `claude-vscode.blur`, לכיוון ההפוך. הקיצור Ctrl+Esc מחליף ביניהן לפי המקום של הפוקוס. באותם דיווחים יש גם באגים ידועים: כשחלון Claude מנותק לחלון נפרד, או כששני חלונות Claude פתוחים זה לצד זה, הפוקוס לא תמיד נוחת בשדה. לכן נוספה ההגדרה `hebrewMode.focusClaude`, שמכבה את ההחזרה האוטומטית. עדיין צריך לוודא ידנית שהטקסט בשדה נשאר מסומן, כך ש-Ctrl+V מחליף אותו.
 - **מקלדות Windows ו-Mac.** הבדיקות רצו ב-Linux. ב-Windows עם פריסה עברית, Ctrl+Alt יכול לשמש כ-AltGr. ה-README מסביר איך משנים קיצור.
 
 ## איך נבדק
 
-1. **בדיקות יחידה:** `npm test` מריץ 115 בדיקות, וכולן עוברות.
+1. **בדיקות יחידה:** `npm test` מריץ 132 בדיקות, וכולן עוברות.
 
    | קובץ | בדיקות | מה נבדק |
    | --- | --- | --- |
-   | `src/test/app.test.ts` | 34 | ארבע הפקודות וכל שורה בטבלת התקלות, מול host מדומה ו-fetch מדומה |
+   | `src/test/app.test.ts` | 42 | הפקודות, כל שורה בטבלת התקלות, ביטול, הודעת הפתיחה וההגדרה `focusClaude`, מול host מדומה ו-fetch מדומה |
    | `src/test/contentProtector.test.ts` | 27 | סמנים מוגנים, עברית ואנגלית מעורבות, Markdown מקונן, פיסוק עברי, סמנים שהמודל השמיט, שכפל או שינה, זיהוי כיוון |
-   | `src/test/geminiService.test.ts` | 21 | header של המפתח, temperature, thinking, timeout, ניסיון חוזר, מיפוי שגיאות, מטמון, בחירת מודל |
-   | `src/test/markdown.test.ts` | 13 | רינדור בטוח, קוד LTR, CSP של חלון התרגום |
+   | `src/test/geminiService.test.ts` | 22 | header של המפתח, temperature, thinking, timeout, ניסיון חוזר, ביטול, מיפוי שגיאות (כולל עומס ומיקום), מטמון, בחירת מודל |
+   | `src/test/markdown.test.ts` | 14 | רינדור בטוח, קוד LTR, CSP של חלון התרגום וחלון המדריך |
    | `src/test/secretGuard.test.ts` | 8 | מפתחות API, JWT, private key, שורות KEY=value |
    | `src/test/policy.test.ts` | 6 | סריקה סטטית של הכללים: אין קווים ארוכים (em dash), המפתח רק ב-header, רק `claude-vscode.focus`, אין כתיבה לדיסק, לוגים או טלמטריה |
    | `src/test/models.test.ts` | 4 | בחירת ה-Flash-Lite היציב החדש ביותר |
-   | `src/test/bidi.test.ts` | 2 | הודעות בעברית בממשק השמאל-לימין של VS Code |
+   | `src/test/storeDocs.test.ts` | 6 | ה-README לדף התוסף (סימני כיוון) והמדריך שנגזר ממנו |
+   | `src/test/bidi.test.ts` | 3 | הודעות בעברית, כולל כתובות, בממשק השמאל-לימין של VS Code |
 
 2. **קצה לקצה ב-VS Code אמיתי:** ה-VSIX הארוז הותקן ב-code-server 4.145.2 (VS Code 1.145.2) ונבדק דרך Chromium עם Playwright: קיצורי מקלדת אמיתיים, לוח אמיתי, דיאלוגים, הודעות וחלון התרגום.
 
    | ריצה | סקריפט | תנאים | תוצאה |
    | --- | --- | --- | --- |
    | א | `test/e2e/run-e2e-real-api.js` | בלי Claude Code, מול ה-API האמיתי של Gemini | 15/15 ([תוצאות](evidence/e2e-real-api-results.json)) |
-   | ב | `test/e2e/run-e2e.js` | עם תוסף הבדיקה `test/e2e/harness`: תשובות Gemini קבועות לפי קובץ מצב, ותחליף ל-`claude-vscode.focus` | 25/25 ([תוצאות](evidence/e2e-full-results.json)) |
+   | ב | `test/e2e/run-e2e.js` | עם תוסף הבדיקה `test/e2e/harness`: תשובות Gemini קבועות לפי קובץ מצב, ותחליף ל-`claude-vscode.focus` | 30/30 ([תוצאות](evidence/e2e-full-results.json)) |
    | ג | `test/e2e/run-e2e-no-focus.js` | תוסף הבדיקה בלי התחליף ל-`claude-vscode.focus` | 1/1 |
 
-   תוסף הבדיקה לא נכלל ב-VSIX (`test/**` ב-`.vscodeignore`).
+   תוסף הבדיקה לא נכלל ב-VSIX (`test/**` ב-`.vscodeignore`). ריצה ב בודקת גם את הודעת הפתיחה (W1), הקישור והכפתור בחלון הזנת המפתח (K1), עומס ב-Gemini (E7), ביטול תרגום (E8) והמדריך בתוך VS Code (GD1).
 
 ## פירוט הקריטריונים
 
@@ -55,7 +56,7 @@
 - ריצה ב, A1 עד A8: בשימוש הראשון, Ctrl+Alt+E פותח את הגדרת המפתח (שדה סיסמה), מציג את הודעת הפרטיות, ואחרי האישור ממשיך לבד לתרגום. האנגלית נכנסת ללוח, `claude-vscode.focus` נקרא פעם אחת, ובשורת הסטטוס מופיע "התרגום לאנגלית בלוח. Ctrl+V ואז Enter".
 - ריצה ב, B1: Ctrl+Alt+Z מחזיר את הטיוטה העברית ללוח.
 - כל הצעדים הם קיצורי מקלדת: Ctrl+A, Ctrl+C, Ctrl+Alt+E, Ctrl+V, Enter.
-- לא אומת: ההתנהגות של `claude-vscode.focus` בתוסף האמיתי (ראי למעלה).
+- לא אומת מול התוסף האמיתי: שהטקסט בשדה נשאר מסומן. לפי דיווחים פומביים, `claude-vscode.focus` רק מעביר פוקוס לשדה (ראי למעלה).
 
 ### 2. תשובה מועתקת מוצגת בעברית בקיצור אחד
 

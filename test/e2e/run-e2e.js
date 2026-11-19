@@ -62,12 +62,21 @@ const ANSWER_HE = 'הוספתי שלוש בדיקות ל-`src/users.test.ts`. כ
     return t.includes('aistudio.google.com/api-keys');
   };
 
+  // W. Welcome message once after installation, with key setup and guide buttons.
+  const welcomeNotes = await notes();
+  const welcomeButtons = (await page.locator('.notification-toast .monaco-button').allTextContents()).map((s) => s.trim());
+  record('W1 welcome message after installation, with "set key" and "guide" buttons', welcomeNotes.some((m) => m.includes('התוסף Hebrew Mode מותקן')) && welcomeButtons.includes('הגדרת מפתח') && welcomeButtons.includes('מדריך'), JSON.stringify({ welcomeNotes, welcomeButtons }));
+  await clearNotes();
+
   // A. First use: Ctrl+Alt+E with no key opens setup, privacy notice must be accepted, then the translation completes.
   await setClipboard(DRAFT);
   await press('Control+Alt+KeyE', 2500);
   const missingNote = await notes();
   const linkAsked = await cancelOpenLinkDialog();
   record('A1 first use opens setup: missing-key warning and AI Studio link', missingNote.some((m) => m.includes('לא הוגדר מפתח Gemini')) && linkAsked, JSON.stringify(missingNote));
+  const promptText = (await page.locator('.quick-input-widget .quick-input-message').allTextContents()).join(' ');
+  const linkButton = await page.locator('.quick-input-widget .codicon-link-external').count();
+  record('K1 key input box shows where to create a key, with a button that opens the page', promptText.includes('https://aistudio.google.com/api-keys') && linkButton > 0, JSON.stringify({ promptText: promptText.slice(0, 160), linkButton }));
   await page.keyboard.type('harness-test-key');
   await page.keyboard.press('Enter');
   await page.waitForSelector('.monaco-dialog-box', { timeout: 15000 });
@@ -166,6 +175,26 @@ const ANSWER_HE = 'הוספתי שלוש בדיקות ל-`src/users.test.ts`. כ
   record('E6 invalid key opens setup; cancel keeps the clipboard', invalidNote.some((m) => m.includes('מפתח Gemini לא תקין')) && setupOpen && (await getClipboard()) === 'תתקן את הבאג בקובץ src/file9.ts', JSON.stringify(invalidNote));
   await clearNotes();
 
+  // E7. Gemini overloaded (503).
+  setMode('503');
+  await setClipboard('תתקן את הבאג בקובץ src/file10.ts');
+  await press('Control+Alt+KeyE', 3000);
+  const overloadNotes = await notes();
+  record('E7 Gemini overloaded (503): clear "try again" message, clipboard kept', overloadNotes.some((m) => m.includes('השרתים של Gemini עמוסים כרגע')) && (await getClipboard()) === 'תתקן את הבאג בקובץ src/file10.ts', JSON.stringify(overloadNotes));
+  await clearNotes();
+
+  // E8. Cancel a slow translation from the progress notification.
+  setMode('slow');
+  await setClipboard('תתקן את הבאג בקובץ src/file11.ts');
+  await press('Control+Alt+KeyE', 1500);
+  const cancelButton = page.locator('.notification-toast .monaco-button', { hasText: 'Cancel' }).first();
+  const hadCancel = (await cancelButton.count()) > 0;
+  if (hadCancel) await cancelButton.click();
+  await page.waitForTimeout(1500);
+  record('E8 cancel button stops a slow translation; clipboard kept', hadCancel && (await statusBarText()).includes('התרגום בוטל') && (await getClipboard()) === 'תתקן את הבאג בקובץ src/file11.ts', `cancel button: ${hadCancel}`);
+  await clearNotes();
+  setMode('ok');
+
   // F. Secret guard: "Mask and translate" keeps the secret out of the request and restores it.
   setMode('ok');
   const secret = 'AIza' + 'SyD3m0Xk9QwErTy5UiOpAsDfGhJkLzXcVbN'.slice(0, 35);
@@ -195,6 +224,26 @@ const ANSWER_HE = 'הוספתי שלוש בדיקות ל-`src/users.test.ts`. כ
   );
   fs.unlinkSync(path.join(WORKSPACE, '.hebrew-mode.json'));
   await clearNotes();
+
+  // GD. The Hebrew guide inside VS Code.
+  await page.keyboard.press('Control+Shift+P');
+  await page.keyboard.type('Hebrew Mode: Show Guide');
+  await page.waitForTimeout(800);
+  await page.keyboard.press('Enter');
+  let guideFrame = null;
+  for (let i = 0; i < 20 && !guideFrame; i++) {
+    for (const f of page.frames()) if (await f.$('#setKey').catch(() => null)) guideFrame = f;
+    if (!guideFrame) await page.waitForTimeout(500);
+  }
+  const guideView = guideFrame
+    ? await guideFrame.evaluate(() => ({ dir: getComputedStyle(document.body).direction, text: document.querySelector('main').innerText, links: [...document.querySelectorAll('a')].map((a) => a.getAttribute('href')) }))
+    : null;
+  await page.screenshot({ path: `${SHOTS}/guide-in-vscode.png` });
+  record(
+    'GD1 guide opens right-to-left with usage steps, the key link and a key setup button',
+    !!guideView && guideView.dir === 'rtl' && guideView.text.includes('איך משתמשים') && guideView.text.includes('איך משיגים מפתח API') && guideView.links.includes('https://aistudio.google.com/api-keys'),
+    JSON.stringify(guideView && { dir: guideView.dir, chars: guideView.text.length, links: guideView.links }),
+  );
 
   // H. Workspace setting turns the extension off for this project.
   fs.mkdirSync(path.join(WORKSPACE, '.vscode'), { recursive: true });

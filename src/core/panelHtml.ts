@@ -7,7 +7,22 @@
 import { MESSAGES } from './messages';
 import { renderMarkdown, escapeHtml } from './markdown';
 
-export function panelHtml(hebrewMarkdown: string, nonce: string): string {
+/** The toolbar button: copy in the translation panel, key setup in the guide. */
+export interface PanelAction {
+  id: string;
+  label: string;
+  /** Shown for a moment after the extension confirms the action. */
+  doneLabel?: string;
+}
+
+export const COPY_ACTION: PanelAction = { id: 'copy', label: MESSAGES.copy, doneLabel: MESSAGES.copied };
+
+/** JSON for an inline script: "<" is escaped so a value can never close the script tag. */
+function scriptJson(value: unknown): string {
+  return JSON.stringify(value).split('<').join(String.fromCharCode(92) + 'u003c');
+}
+
+export function panelHtml(hebrewMarkdown: string, nonce: string, action: PanelAction = COPY_ACTION): string {
   const csp = `default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -83,19 +98,20 @@ export function panelHtml(hebrewMarkdown: string, nonce: string): string {
 </style>
 </head>
 <body>
-<div class="toolbar"><button id="copy" type="button">${escapeHtml(MESSAGES.copy)}</button></div>
+<div class="toolbar"><button id="${escapeHtml(action.id)}" type="button">${escapeHtml(action.label)}</button></div>
 <main id="content">
 ${renderMarkdown(hebrewMarkdown)}
 </main>
 <script nonce="${nonce}">
   (function () {
     const vscode = acquireVsCodeApi();
-    const button = document.getElementById('copy');
-    const label = ${JSON.stringify(MESSAGES.copy)};
-    const done = ${JSON.stringify(MESSAGES.copied)};
-    button.addEventListener('click', function () { vscode.postMessage({ type: 'copy' }); });
+    const id = ${scriptJson(action.id)};
+    const button = document.getElementById(id);
+    const label = ${scriptJson(action.label)};
+    const done = ${scriptJson(action.doneLabel ?? '')};
+    button.addEventListener('click', function () { vscode.postMessage({ type: id }); });
     window.addEventListener('message', function (event) {
-      if (event.data && event.data.type === 'copied') {
+      if (done && event.data && event.data.type === 'done') {
         button.textContent = done;
         setTimeout(function () { button.textContent = label; }, 1500);
       }

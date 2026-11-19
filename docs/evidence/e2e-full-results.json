@@ -1,8 +1,18 @@
 [
   {
+    "name": "W1 welcome message after installation, with \"set key\" and \"guide\" buttons",
+    "pass": true,
+    "evidence": "{\"welcomeNotes\":[\"⁧התוסף Hebrew Mode מותקן. כדי להתחיל צריך מפתח Gemini בחינם.⁩\"],\"welcomeButtons\":[\"הגדרת מפתח\",\"מדריך\"]}"
+  },
+  {
     "name": "A1 first use opens setup: missing-key warning and AI Studio link",
     "pass": true,
     "evidence": "[\"⁧לא הוגדר מפתח Gemini. פותחת את הגדרת המפתח.⁩\"]"
+  },
+  {
+    "name": "K1 key input box shows where to create a key, with a button that opens the page",
+    "pass": true,
+    "evidence": "{\"promptText\":\"⁧הדביקי כאן את מפתח Gemini. אין עדיין מפתח? יוצרים אחד בחינם ב-⁦https://aistudio.google.com/api-keys⁩⁩ (Press 'Enter' to confirm or 'Escape' to cancel)\",\"linkButton\":1}"
   },
   {
     "name": "A2 privacy notice shown on first run",
@@ -105,6 +115,16 @@
     "evidence": "[\"⁧מפתח Gemini לא תקין או שאין לו הרשאה. פותחת את הגדרת המפתח.⁩\"]"
   },
   {
+    "name": "E7 Gemini overloaded (503): clear \"try again\" message, clipboard kept",
+    "pass": true,
+    "evidence": "[\"⁧השרתים של Gemini עמוסים כרגע. נסי שוב בעוד כמה שניות.⁩\"]"
+  },
+  {
+    "name": "E8 cancel button stops a slow translation; clipboard kept",
+    "pass": true,
+    "evidence": "cancel button: true"
+  },
+  {
     "name": "F1 secret dialog shows the line without the secret",
     "pass": true,
     "evidence": "ביטולהסתר ותרגם⁧נמצא בטקסט משהו שנראה כמו מפתח או סיסמה, ולכן התרגום נעצר.⁩⁧שורה 1: Google API key (AIza…(39 תווים))⁩⁧בלחיצה על \"הסתר ותרגם\" הסוד מוחלף בסמן מוגן ולא נשלח ל-Gemini. בתרגום הוא חוזר למק"
@@ -118,6 +138,11 @@
     "name": "G1 short Hebrew instruction goes to English; glossary term from .hebrew-mode.json is not sent and stays as is",
     "pass": true,
     "evidence": "\"word migration word-Supabase\""
+  },
+  {
+    "name": "GD1 guide opens right-to-left with usage steps, the key link and a key setup button",
+    "pass": true,
+    "evidence": "{\"dir\":\"rtl\",\"chars\":3495,\"links\":[\"https://aistudio.google.com/api-keys\",\"https://aistudio.google.com/api-keys\"]}"
   },
   {
     "name": "H1 workspace setting disables sending; status bar shows it",

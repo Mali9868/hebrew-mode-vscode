@@ -5,7 +5,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CLAUDE_FOCUS_COMMAND, Config, HebrewModeApp, Host, STATE_COUNTER, STATE_MODEL, STATE_PRIVACY, parseGlossaryFile } from '../core/app';
+import { CLAUDE_FOCUS_COMMAND, Config, HebrewModeApp, Host, STATE_COUNTER, STATE_MODEL, STATE_PRIVACY, STATE_WELCOMED, parseGlossaryFile } from '../core/app';
 import { FetchLike, GeminiService } from '../core/geminiService';
 import { KEY_URL, MESSAGES } from '../core/messages';
 
@@ -24,7 +24,10 @@ class FakeHost implements Host {
   clipboard = '';
   key: string | undefined = KEY;
   state = new Map<string, unknown>([[STATE_PRIVACY, true]]);
-  cfg: Config = { enabled: true, tier: 'flash-lite', modelOverride: '', glossary: [] };
+  cfg: Config = { enabled: true, tier: 'flash-lite', modelOverride: '', glossary: [], focusClaude: true };
+  /** Aborting this simulates the user pressing Cancel on the progress notification. */
+  cancelController = new AbortController();
+  guides = 0;
   focusExists = true;
   /** Values the next askApiKey() calls return (undefined = cancelled). */
   keyAnswers: Array<string | undefined> = [];
@@ -72,13 +75,16 @@ class FakeHost implements Host {
     this.confirms.push({ kind, message, detail });
     return this.confirmAnswers.shift() ?? false;
   }
-  async progress<T>(_title: string, task: () => Promise<T>): Promise<T> {
-    const p = task();
+  async progress<T>(_title: string, task: (cancel: AbortSignal) => Promise<T>): Promise<T> {
+    const p = task(this.cancelController.signal);
     this.duringProgress?.();
     return p;
   }
   showPanel(hebrew: string): void {
     this.panels.push(hebrew);
+  }
+  async showGuide(): Promise<void> {
+    this.guides++;
   }
   async focusClaude(): Promise<boolean> {
     this.focusCalls++;
@@ -286,7 +292,7 @@ test('row 5: network failure or a malformed answer says "translation failed"; cl
   const replies: Array<(c: Call, n: number) => Reply> = [
     () => new TypeError('fetch failed'),
     () => ({ status: 200, body: { candidates: [] } }),
-    () => ({ status: 500, body: { error: { code: 500 } } }),
+    () => ({ status: 400, body: { error: { code: 400, message: 'Bad request' } } }),
   ];
   for (const reply of replies) {
     const { host, app } = setup(reply);
@@ -559,4 +565,77 @@ test('the missing-key warning has a button that opens the page where a key is cr
 
 test('the key input box shows where to create a key', () => {
   assert.match(MESSAGES.setupPrompt, /https:\/\/aistudio\.google\.com\/api-keys/);
+});
+
+// ---------------------------------------------------------------------------
+// Improvements after the MVP
+
+test('Gemini overloaded (503) or a temporary server error (500) gives a "try again" warning; clipboard kept', async () => {
+  for (const [status, message] of [[503, MESSAGES.overloaded], [500, MESSAGES.serverError]] as const) {
+    const { host, app } = setup(() => ({ status, body: { error: { code: status, status: 'UNAVAILABLE' } } }));
+    host.clipboard = HEBREW;
+    await app.translateToEnglish();
+    assert.deepEqual(host.warnings, [message]);
+    assert.equal(host.clipboard, HEBREW);
+  }
+});
+
+test('an unsupported location (for example a VPN) is explained', async () => {
+  const { host, app } = setup(() => ({ status: 400, body: { error: { code: 400, message: 'User location is not supported for the API use.', status: 'FAILED_PRECONDITION' } } }));
+  host.clipboard = HEBREW;
+  await app.translateToEnglish();
+  assert.deepEqual(host.errors, [MESSAGES.unsupportedLocation]);
+  assert.equal(host.clipboard, HEBREW);
+});
+
+test('cancelling the progress notification stops the request quietly and keeps the clipboard', async () => {
+  const { host, app, generateCalls } = setup(() => new TypeError('network down'));
+  host.clipboard = HEBREW;
+  host.duringProgress = () => host.cancelController.abort();
+  await app.translateToEnglish();
+  assert.deepEqual(host.statuses, [MESSAGES.cancelled]);
+  assert.deepEqual(host.errors, []);
+  assert.equal(host.clipboard, HEBREW);
+  assert.ok(generateCalls().length <= 1, 'no retry after cancel');
+});
+
+test('with focusClaude off, nothing is focused and the status says where to paste', async () => {
+  const { host, app } = setup();
+  host.cfg = { ...host.cfg, focusClaude: false };
+  host.clipboard = HEBREW;
+  await app.translateToEnglish();
+  assert.equal(host.focusCalls, 0);
+  assert.deepEqual(host.statuses, [MESSAGES.englishReadyNoFocus]);
+  assert.deepEqual(host.infos, []);
+  await app.restoreHebrew();
+  assert.equal(host.focusCalls, 0);
+  assert.equal(host.clipboard, HEBREW);
+});
+
+test('welcome: shown once after installation, with buttons for key setup and the guide', async () => {
+  const { host, app } = setup();
+  host.state.delete(STATE_WELCOMED);
+  const answers = [MESSAGES.welcomeGuide];
+  host.info = async (message: string) => {
+    host.infos.push(message);
+    return answers.shift();
+  };
+  await app.welcome();
+  assert.deepEqual(host.infos, [MESSAGES.welcome]);
+  assert.equal(host.guides, 1);
+  await app.welcome();
+  assert.equal(host.infos.length, 1, 'not shown twice');
+});
+
+test('welcome: the key setup button opens Set API Key', async () => {
+  const { host, app } = setup();
+  host.key = undefined;
+  host.state.delete(STATE_WELCOMED);
+  host.keyAnswers = ['VALID'];
+  host.info = async (message: string) => {
+    host.infos.push(message);
+    return message === MESSAGES.welcome ? MESSAGES.welcomeSetKey : undefined;
+  };
+  await app.welcome();
+  assert.equal(host.key, 'VALID');
 });

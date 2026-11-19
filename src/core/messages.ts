@@ -17,6 +17,9 @@ export const MESSAGES = {
   timeout: 'התרגום נכשל: Gemini לא ענה בזמן. הטקסט המקורי נשאר בלוח.',
   blocked: 'התרגום נכשל: Gemini סירב לתרגם את הטקסט. הטקסט המקורי נשאר בלוח.',
   placeholders: 'התרגום שינה קוד, בוטל. הטקסט המקורי נשאר בלוח.',
+  overloaded: 'השרתים של Gemini עמוסים כרגע. נסי שוב בעוד כמה שניות.',
+  serverError: 'תקלה זמנית אצל Gemini. נסי שוב בעוד רגע.',
+  unsupportedLocation: 'השירות של Gemini לא זמין מהמיקום הנוכחי, אולי בגלל VPN.',
   secretFound: 'נמצא בטקסט משהו שנראה כמו מפתח או סיסמה, ולכן התרגום נעצר.',
   secretLine: (line: number, type: string, preview: string): string => `שורה ${line}: ${type} (${preview})`,
   secretExplain: 'בלחיצה על "הסתר ותרגם" הסוד מוחלף בסמן מוגן ולא נשלח ל-Gemini. בתרגום הוא חוזר למקומו בלי שינוי.',
@@ -37,6 +40,7 @@ export const MESSAGES = {
   translatingToHebrew: 'מתרגם לעברית…',
   choosingModel: 'בוחר מודל Gemini…',
   englishReady: 'התרגום לאנגלית בלוח. Ctrl+V ואז Enter.',
+  englishReadyNoFocus: 'התרגום לאנגלית בלוח. לחצי על השדה של Claude, Ctrl+V ואז Enter.',
   clipboardChanged: 'הלוח השתנה בזמן התרגום, אז התרגום לא נכתב אליו.',
   copyTranslation: 'העתיקי את התרגום',
   cancelled: 'התרגום בוטל. הלוח לא השתנה.',
@@ -48,6 +52,13 @@ export const MESSAGES = {
   noDraft: 'אין טיוטה עברית שמורה. היא נשמרת כשמתרגמים לאנגלית עם Ctrl+Alt+E.',
   draftRestored: 'הטיוטה העברית חזרה ללוח.',
   draftRestoredNoFocus: 'הטיוטה העברית חזרה ללוח. לחצי על השדה של Claude והדביקי',
+
+  // Welcome and guide
+  welcome: 'התוסף Hebrew Mode מותקן. כדי להתחיל צריך מפתח Gemini בחינם.',
+  welcomeSetKey: 'הגדרת מפתח',
+  welcomeGuide: 'מדריך',
+  guideTitle: 'Hebrew Mode: מדריך',
+  guideMissing: 'המדריך לא נמצא בהתקנה. ההסבר המלא נמצא בדף התוסף.',
 
   // Panel
   panelTitle: 'תרגום לעברית',

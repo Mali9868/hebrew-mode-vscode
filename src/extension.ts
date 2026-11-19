@@ -9,7 +9,7 @@ import { GeminiService } from './core/geminiService';
 import { rtlIsolate } from './core/bidi';
 import { KEY_URL, MESSAGES } from './core/messages';
 import { ModelTier } from './core/models';
-import { TranslationPanel } from './panel';
+import { GuidePanel, TranslationPanel } from './panel';
 
 const SECRET_KEY = 'hebrewMode.geminiApiKey';
 const ENV_KEY = 'HEBREW_MODE_GEMINI_KEY';
@@ -22,6 +22,7 @@ class VsCodeHost implements Host {
   constructor(
     private readonly ctx: vscode.ExtensionContext,
     private readonly panel: TranslationPanel,
+    private readonly guide: GuidePanel,
   ) {}
 
   async readClipboard(): Promise<string> {
@@ -56,12 +57,27 @@ class VsCodeHost implements Host {
     return choice === ok;
   }
 
-  async progress<T>(title: string, task: () => Promise<T>): Promise<T> {
-    return vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title }, () => task());
+  async progress<T>(title: string, task: (cancel: AbortSignal) => Promise<T>): Promise<T> {
+    return vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title, cancellable: true }, (_progress, token) => {
+      const controller = new AbortController();
+      token.onCancellationRequested(() => controller.abort());
+      return task(controller.signal);
+    });
   }
 
   showPanel(hebrew: string): void {
     this.panel.show(hebrew);
+  }
+
+  async showGuide(): Promise<void> {
+    let guide: string = MESSAGES.guideMissing;
+    try {
+      const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(this.ctx.extensionUri, 'build', 'guide.md'));
+      guide = new TextDecoder().decode(bytes);
+    } catch {
+      // Not built (development without packaging): show the short fallback text.
+    }
+    this.guide.show(guide);
   }
 
   async focusClaude(): Promise<boolean> {
@@ -135,6 +151,7 @@ class VsCodeHost implements Host {
       enabled: c.get<boolean>('enabled', true),
       tier: tier satisfies ModelTier,
       modelOverride: (c.get<string>('model', '') ?? '').trim(),
+      focusClaude: c.get<boolean>('focusClaude', true),
       glossary: [...new Set([...(c.get<string[]>('glossary', []) ?? []), ...(await this.projectGlossary())])],
     };
   }
@@ -197,7 +214,8 @@ class CounterStatus implements vscode.Disposable {
 
 export function activate(context: vscode.ExtensionContext): void {
   const panel = new TranslationPanel();
-  const host = new VsCodeHost(context, panel);
+  const guide = new GuidePanel();
+  const host = new VsCodeHost(context, panel, guide);
   const gemini = new GeminiService(() => host.getKey());
   const app = new HebrewModeApp(host, gemini);
   const status = new CounterStatus(app);
@@ -205,15 +223,18 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     panel,
+    guide,
     status,
     vscode.commands.registerCommand('hebrewMode.translateToEnglish', () => app.translateToEnglish()),
     vscode.commands.registerCommand('hebrewMode.restoreHebrew', () => app.restoreHebrew()),
     vscode.commands.registerCommand('hebrewMode.translateToHebrew', () => app.translateToHebrew()),
     vscode.commands.registerCommand('hebrewMode.setApiKey', () => app.setApiKey()),
+    vscode.commands.registerCommand('hebrewMode.showGuide', () => host.showGuide()),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('hebrewMode')) status.refresh();
     }),
   );
+  void app.welcome();
 }
 
 export function deactivate(): void {

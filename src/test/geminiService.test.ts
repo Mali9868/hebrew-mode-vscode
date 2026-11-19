@@ -199,10 +199,30 @@ test('network error twice gives "translation failed", only two attempts', async 
   assert.equal(calls.length, 2);
 });
 
-test('HTTP errors are not retried', async () => {
-  const { fetch, calls } = mockFetch(() => ({ status: 500, body: { error: { code: 500, message: 'internal' } } }));
-  await expectError(new GeminiService(async () => KEY, fetch).translate({ text: 'שלום', direction: 'he-en', model: 'm' }), 'badResponse');
+test('HTTP errors are not retried, and server errors are named', async () => {
+  const cases: Array<[number, string, string]> = [
+    [500, 'internal', 'serverError'],
+    [503, 'The model is overloaded. Please try again later.', 'overloaded'],
+    [400, 'User location is not supported for the API use.', 'unsupportedLocation'],
+    [418, 'teapot', 'badResponse'],
+  ];
+  for (const [status, message, kind] of cases) {
+    const { fetch, calls } = mockFetch(() => ({ status, body: { error: { code: status, message } } }));
+    await expectError(new GeminiService(async () => KEY, fetch).translate({ text: 'שלום', direction: 'he-en', model: 'm' }), kind);
+    assert.equal(calls.length, 1, `${status} is not retried`);
+  }
+});
+
+test('a cancelled request stops at once, is not retried and is not reported as a timeout', async () => {
+  const { fetch, calls } = mockFetch(() => 'hang');
+  const controller = new AbortController();
+  const pending = new GeminiService(async () => KEY, fetch).translate({ text: 'שלום', direction: 'he-en', model: 'm' }, controller.signal);
+  setTimeout(() => controller.abort(), 10);
+  await expectError(pending, 'cancelled');
   assert.equal(calls.length, 1);
+  const already = new AbortController();
+  already.abort();
+  await expectError(new GeminiService(async () => KEY, fetch).translate({ text: 'עוד', direction: 'he-en', model: 'm' }, already.signal), 'cancelled');
 });
 
 test('timeout', async () => {

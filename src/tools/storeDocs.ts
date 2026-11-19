@@ -83,3 +83,21 @@ export function isolateHebrewMarkdown(markdown: string): string {
   }
   return out.join('\n');
 }
+
+/**
+ * The in-product guide: the README from "## איך משתמשים" up to "## התקנה מקובץ VSIX"
+ * (setup, getting a key, shortcuts, asking Claude to answer in English), without the
+ * GitHub-only div wrappers. One source for the README and the guide.
+ */
+export function extractGuide(readme: string): string {
+  const lines = readme.replace(/\r\n?/g, '\n').split('\n');
+  const start = lines.findIndex((l) => l.startsWith('## איך משתמשים'));
+  if (start < 0) return '';
+  const end = lines.findIndex((l, i) => i > start && l.startsWith('## התקנה מקובץ VSIX'));
+  const body = lines
+    .slice(start, end > start ? end : undefined)
+    .filter((l) => !/^\s*<\/?div\b[^>]*>\s*$/i.test(l))
+    // The line that points to the guide itself is not needed inside the guide.
+    .filter((l) => !l.includes('Hebrew Mode: Show Guide'));
+  return `${['# Hebrew Mode: מדריך', '', ...body].join('\n').replace(/\n{3,}/g, '\n\n').trim()}\n`;
+}

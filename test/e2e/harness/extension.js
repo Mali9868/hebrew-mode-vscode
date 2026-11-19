@@ -62,6 +62,17 @@ globalThis.fetch = async (url, init = {}) => {
     return json(429, { error: { code: 429, status: 'RESOURCE_EXHAUSTED', message: 'Quota exceeded', details: [{ '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] }] } });
   }
   if (m === 'network') throw new TypeError('fetch failed');
+  if (m === '503') return json(503, { error: { code: 503, message: 'The model is overloaded. Please try again later.', status: 'UNAVAILABLE' } });
+  if (m === 'slow') {
+    // Answers after 8 seconds unless the request is aborted (the user pressed Cancel).
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(resolve, 8000);
+      init.signal?.addEventListener('abort', () => {
+        clearTimeout(timer);
+        reject(new Error('aborted'));
+      });
+    });
+  }
   if (m === 'bad') return json(200, { candidates: [] });
   const body = JSON.parse(init.body);
   const text = body.contents[0].parts[0].text;

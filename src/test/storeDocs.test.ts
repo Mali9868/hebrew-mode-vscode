@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isolateHebrewMarkdown } from '../tools/storeDocs';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { extractGuide, isolateHebrewMarkdown } from '../tools/storeDocs';
 
 const RLI = String.fromCharCode(0x2067);
 const LRI = String.fromCharCode(0x2066);
@@ -37,4 +39,16 @@ test('inline code keeps left-to-right order inside Hebrew lines, with the marks 
     isolateHebrewMarkdown('הקובץ נמצא ב-`~/.claude/CLAUDE.md` עכשיו.'),
     `${RLI}הקובץ נמצא ב-${LRI}\`~/.claude/CLAUDE.md\`${PDI} עכשיו.${PDI}`,
   );
+});
+
+test('the in-product guide comes from the README: setup, key, shortcuts and CLAUDE.md, without div wrappers', () => {
+  const guide = extractGuide(readFileSync(join(__dirname, '..', '..', 'README.md'), 'utf8'));
+  for (const heading of ['# Hebrew Mode: מדריך', '## איך משתמשים', '## איך משיגים מפתח API של Gemini', '## קיצורי מקלדת', '## ש-Claude יענה באנגלית']) {
+    assert.ok(guide.includes(heading), heading);
+  }
+  assert.ok(guide.includes('https://aistudio.google.com/api-keys'));
+  assert.ok(!guide.includes('<div'));
+  assert.ok(!guide.includes('## התקנה מקובץ VSIX'));
+  assert.ok(!guide.includes('Hebrew Mode: Show Guide'), 'the guide does not point to itself');
+  assert.equal(extractGuide('# nothing here'), '');
 });
