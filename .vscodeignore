@@ -1,0 +1,15 @@
+test/**
+src/**
+out/test/**
+docs/**
+node_modules/**
+**/*.map
+**/*.ts
+tsconfig.json
+.gitignore
+.vscodeignore
+.hebrew-mode.json
+*.vsix
+.env
+.env.*
+*.env

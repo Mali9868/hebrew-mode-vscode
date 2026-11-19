@@ -1,0 +1,15 @@
+{
+  "name": "hebrew-mode-e2e-harness",
+  "displayName": "Hebrew Mode e2e harness (test only)",
+  "description": "Test double for end-to-end runs: fake Gemini responses and a stand-in claude-vscode.focus command (skipped when HEBREW_MODE_E2E_NO_FOCUS=1). Never ship.",
+  "version": "0.0.1",
+  "publisher": "hebrew-mode-test",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "activationEvents": [
+    "*"
+  ],
+  "main": "./extension.js"
+}

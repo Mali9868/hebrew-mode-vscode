@@ -1,0 +1,9 @@
+node_modules/
+out/
+*.vsix
+
+# Environment files: never commit keys
+.env
+.env.*
+*.env
+!.env.example

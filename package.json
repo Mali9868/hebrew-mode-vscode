@@ -1,0 +1,123 @@
+{
+  "name": "hebrew-mode",
+  "displayName": "Hebrew Mode for Claude Code",
+  "description": "כותבים וקוראים בעברית, Claude Code מקבל ומחזיר אנגלית. תרגום דרך Gemini עם המפתח שלך, דרך הלוח.",
+  "version": "0.1.0",
+  "publisher": "hebrew-mode",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "hebrew",
+    "rtl",
+    "translation",
+    "claude code",
+    "gemini"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": true
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "hebrewMode.translateToEnglish",
+        "title": "Translate to English (תרגום לאנגלית)",
+        "category": "Hebrew Mode"
+      },
+      {
+        "command": "hebrewMode.restoreHebrew",
+        "title": "Restore Hebrew (שחזור הטיוטה העברית)",
+        "category": "Hebrew Mode"
+      },
+      {
+        "command": "hebrewMode.translateToHebrew",
+        "title": "Translate to Hebrew (תרגום לעברית)",
+        "category": "Hebrew Mode"
+      },
+      {
+        "command": "hebrewMode.setApiKey",
+        "title": "Set API Key (הגדרת מפתח)",
+        "category": "Hebrew Mode"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "hebrewMode.translateToEnglish",
+        "key": "ctrl+alt+e",
+        "mac": "ctrl+alt+e"
+      },
+      {
+        "command": "hebrewMode.restoreHebrew",
+        "key": "ctrl+alt+z",
+        "mac": "ctrl+alt+z"
+      },
+      {
+        "command": "hebrewMode.translateToHebrew",
+        "key": "ctrl+alt+h",
+        "mac": "ctrl+alt+h"
+      }
+    ],
+    "configuration": {
+      "title": "Hebrew Mode",
+      "properties": {
+        "hebrewMode.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "markdownDescription": "כשההגדרה כבויה, Hebrew Mode לא שולח שום טקסט ל-Gemini. כדאי לכבות אותה בהגדרות ה-Workspace של פרויקט רגיש, למשל ריפו של לקוחה."
+        },
+        "hebrewMode.modelTier": {
+          "type": "string",
+          "enum": [
+            "flash-lite",
+            "flash"
+          ],
+          "enumDescriptions": [
+            "ברירת המחדל. מספיק לתרגום, והמכסה החינמית היומית שלו גדולה בהרבה.",
+            "איכות גבוהה יותר, אבל המכסה החינמית היומית שלו קטנה בהרבה."
+          ],
+          "default": "flash-lite",
+          "scope": "application",
+          "markdownDescription": "סוג מודל Gemini לתרגום. התוסף בוחר לבד את המודל היציב החדש ביותר מהסוג הזה מתוך המודלים שזמינים למפתח."
+        },
+        "hebrewMode.model": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "markdownDescription": "מזהה מודל מדויק (למשל `gemini-2.5-flash-lite`) שגובר על הבחירה האוטומטית. השאירי ריק כדי שהתוסף יבחר לבד."
+        },
+        "hebrewMode.glossary": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "window",
+          "markdownDescription": "מונחים שלא מתרגמים בשום כיוון, למשל `deploy`, `commit`, `Supabase` או שמות של קומפוננטות. אפשר גם קובץ `.hebrew-mode.json` בשורש הפרויקט בפורמט `{ \"glossary\": [\"deploy\"] }`."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "test": "tsc -p . && node --test out/test/*.test.js",
+    "package": "tsc -p . && vsce package --no-dependencies --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "~1.90.0",
+    "@vscode/vsce": "^4.1.1",
+    "typescript": "~5.6.3"
+  }
+}

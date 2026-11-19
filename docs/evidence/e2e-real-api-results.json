@@ -1,0 +1,77 @@
+[
+  {
+    "name": "four commands registered",
+    "pass": true,
+    "evidence": "[\"Hebrew Mode: Restore Hebrew (שחזור הטיוטה העברית)Ctrl+Alt+Z\",\"Hebrew Mode: Set API Key (הגדרת מפתח)\",\"Hebrew Mode: Translate to English (תרגום לאנגלית)Ctrl+Alt+E\",\"Hebrew Mode: Translate to Hebrew (תרגום לעברית)Ctrl+Alt+H\"]"
+  },
+  {
+    "name": "status bar counter shown",
+    "pass": true,
+    "evidence": "matching items: 2"
+  },
+  {
+    "name": "empty clipboard message via Ctrl+Alt+E",
+    "pass": true,
+    "evidence": "[\"⁧העתיקי קודם את הטקסט⁩\"]"
+  },
+  {
+    "name": "secret guard dialog shows the line, hides the secret",
+    "pass": true,
+    "evidence": "ביטולהסתר ותרגם⁧נמצא בטקסט משהו שנראה כמו מפתח או סיסמה, ולכן התרגום נעצר.⁩⁧שורה 2: Google API key (AIza…(39 תווים))⁩⁧בלחיצה על \"הסתר ותרגם\" הסוד מוחלף בסמן מוגן ולא נשלח ל-Gemini. בתרגום הוא חוזר למקומו בלי שינוי.⁩"
+  },
+  {
+    "name": "clipboard unchanged after cancelling the secret dialog",
+    "pass": true,
+    "evidence": "compared exact text"
+  },
+  {
+    "name": "missing key opens Set API Key with a password field",
+    "pass": true,
+    "evidence": "type=password title=Hebrew Mode: הגדרת מפתח"
+  },
+  {
+    "name": "setup asks to open https://aistudio.google.com/api-keys",
+    "pass": true,
+    "evidence": "VS Code open-link dialog for aistudio.google.com"
+  },
+  {
+    "name": "missing key warning shown",
+    "pass": true,
+    "evidence": "[\"⁧לא הוגדר מפתח Gemini. פותחת את הגדרת המפתח.⁩\"]"
+  },
+  {
+    "name": "invalid key rejected by the real Gemini API with a clear message",
+    "pass": true,
+    "evidence": "[\"⁧המפתח לא תקין. בדקי שהעתקת אותו במלואו ונסי שוב.⁩\"]"
+  },
+  {
+    "name": "no key text in any message",
+    "pass": true,
+    "evidence": "checked all notifications"
+  },
+  {
+    "name": "clipboard still holds the Hebrew after the failed setup",
+    "pass": true,
+    "evidence": "compared exact text"
+  },
+  {
+    "name": "Ctrl+Alt+Z restores the Hebrew draft",
+    "pass": true,
+    "evidence": "clipboard restored; messages=[\"⁧הטיוטה העברית חזרה ללוח. לחצי על השדה של Claude והדביקי⁩\"]"
+  },
+  {
+    "name": "without Claude Code installed, the focus fallback message is shown",
+    "pass": true,
+    "evidence": "[\"⁧הטיוטה העברית חזרה ללוח. לחצי על השדה של Claude והדביקי⁩\"]"
+  },
+  {
+    "name": "Ctrl+Alt+H on Hebrew text explains it is already Hebrew",
+    "pass": true,
+    "evidence": "[\"⁧הטקסט בלוח כבר בעברית. לתרגום לאנגלית: Ctrl+Alt+E⁩\"]"
+  },
+  {
+    "name": "code-only text: nothing to translate, nothing sent",
+    "pass": true,
+    "evidence": "[\"⁧אין בטקסט מה לתרגם: יש בו רק קוד, נתיבים או פקודות. הלוח לא השתנה.⁩\"]"
+  }
+]
