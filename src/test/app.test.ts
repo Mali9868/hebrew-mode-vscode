@@ -544,3 +544,19 @@ test('daily counter counts only requests actually sent, per Pacific day', async 
   await app.translateToEnglish(); // cache hit, not sent
   assert.equal(app.todayCount, 1);
 });
+
+test('the missing-key warning has a button that opens the page where a key is created', async () => {
+  const { host, app } = setup();
+  host.key = undefined;
+  host.clipboard = HEBREW;
+  host.keyAnswers = [undefined];
+  host.warnAction = MESSAGES.openKeyPage;
+  await app.translateToEnglish();
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(host.opened, [KEY_URL, KEY_URL], 'once by the setup itself, once by the button');
+  assert.equal(host.clipboard, HEBREW);
+});
+
+test('the key input box shows where to create a key', () => {
+  assert.match(MESSAGES.setupPrompt, /https:\/\/aistudio\.google\.com\/api-keys/);
+});

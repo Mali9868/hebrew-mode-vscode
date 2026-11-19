@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { CLAUDE_FOCUS_COMMAND, Config, HebrewModeApp, Host, parseGlossaryFile } from './core/app';
 import { GeminiService } from './core/geminiService';
 import { rtlIsolate } from './core/bidi';
-import { MESSAGES } from './core/messages';
+import { KEY_URL, MESSAGES } from './core/messages';
 import { ModelTier } from './core/models';
 import { TranslationPanel } from './panel';
 
@@ -79,14 +79,33 @@ class VsCodeHost implements Host {
     await vscode.env.openExternal(vscode.Uri.parse(url));
   }
 
-  async askApiKey(): Promise<string | undefined> {
-    return vscode.window.showInputBox({
-      title: MESSAGES.setupTitle,
-      prompt: rtlIsolate(MESSAGES.setupPrompt),
-      placeHolder: 'AIza...',
-      password: true,
-      ignoreFocusOut: true,
-      validateInput: (value) => (/\s/.test(value.trim()) ? rtlIsolate(MESSAGES.setupNoSpaces) : undefined),
+  /** Password input box with a title-bar button that opens the page where a key is created. */
+  askApiKey(): Promise<string | undefined> {
+    return new Promise((resolve) => {
+      const box = vscode.window.createInputBox();
+      const openPage: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon('link-external'), tooltip: MESSAGES.openKeyPage };
+      box.title = MESSAGES.setupTitle;
+      box.prompt = rtlIsolate(MESSAGES.setupPrompt);
+      box.placeholder = 'AIza...';
+      box.password = true;
+      box.ignoreFocusOut = true;
+      box.buttons = [openPage];
+      let done = false;
+      const finish = (value: string | undefined): void => {
+        if (done) return;
+        done = true;
+        resolve(value);
+        box.dispose();
+      };
+      box.onDidTriggerButton(() => void vscode.env.openExternal(vscode.Uri.parse(KEY_URL)));
+      box.onDidChangeValue((value) => {
+        box.validationMessage = /\s/.test(value.trim()) ? rtlIsolate(MESSAGES.setupNoSpaces) : undefined;
+      });
+      box.onDidAccept(() => {
+        if (!box.validationMessage) finish(box.value);
+      });
+      box.onDidHide(() => finish(undefined));
+      box.show();
     });
   }
 

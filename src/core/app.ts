@@ -233,7 +233,7 @@ export class HebrewModeApp {
         return result.text;
       } catch (e) {
         if (attempt === 0 && isTranslationError(e, 'missingKey', 'invalidKey')) {
-          void this.host.warn(e.message);
+          this.warnKey(e.message);
           if (await this.setApiKey()) continue;
           this.host.status(MESSAGES.setupCancelled);
           return undefined;
@@ -246,6 +246,13 @@ export class HebrewModeApp {
         return undefined;
       }
     }
+  }
+
+  /** Key warnings come with a button that opens the page where a key is created. */
+  private warnKey(message: string): void {
+    void this.host.warn(message, MESSAGES.openKeyPage).then((choice) => {
+      if (choice === MESSAGES.openKeyPage) void this.host.openExternal(KEY_URL);
+    });
   }
 
   private report(e: unknown, cfg: Config): void {
@@ -269,7 +276,7 @@ export class HebrewModeApp {
   private async ensureReady(): Promise<boolean> {
     const key = (await this.host.getKey())?.trim();
     if (!key) {
-      void this.host.warn(MESSAGES.missingKey);
+      this.warnKey(MESSAGES.missingKey);
       if (!(await this.setApiKey())) {
         this.host.status(MESSAGES.setupCancelled);
         return false;

@@ -57,7 +57,8 @@ export const MESSAGES = {
 
   // Key setup
   setupTitle: 'Hebrew Mode: הגדרת מפתח',
-  setupPrompt: 'הדביקי כאן את מפתח Gemini מ-Google AI Studio. הדף נפתח בדפדפן.',
+  setupPrompt: 'הדביקי כאן את מפתח Gemini. אין עדיין מפתח? יוצרים אחד בחינם ב-https://aistudio.google.com/api-keys',
+  openKeyPage: 'פתיחת דף המפתחות',
   setupNoSpaces: 'המפתח לא יכול להכיל רווחים',
   checkingKey: 'בודק את המפתח ובוחר מודל…',
   keyInvalidSetup: 'המפתח לא תקין. בדקי שהעתקת אותו במלואו ונסי שוב.',

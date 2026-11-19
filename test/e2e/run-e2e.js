@@ -199,7 +199,9 @@ const ANSWER_HE = 'הוספתי שלוש בדיקות ל-`src/users.test.ts`. כ
   // H. Workspace setting turns the extension off for this project.
   fs.mkdirSync(path.join(WORKSPACE, '.vscode'), { recursive: true });
   fs.writeFileSync(path.join(WORKSPACE, '.vscode', 'settings.json'), JSON.stringify({ 'hebrewMode.enabled': false }));
-  await page.waitForTimeout(3000);
+  // VS Code picks up the settings file asynchronously: wait for the status bar to show the change.
+  await page.waitForSelector('.statusbar-item:has(.codicon-circle-slash)', { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(500);
   const offIcon = await page.locator('.statusbar-item:has(.codicon-circle-slash)').count();
   const beforeOff = harness().requests.length;
   await setClipboard('תתקן את הבאג');
