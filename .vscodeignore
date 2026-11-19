@@ -1,7 +1,10 @@
 test/**
 src/**
-out/test/**
+scripts/**
 docs/**
+out/test/**
+out/tools/**
+images/panel.png
 node_modules/**
 **/*.map
 **/*.ts
@@ -9,6 +12,8 @@ tsconfig.json
 .gitignore
 .vscodeignore
 .hebrew-mode.json
+README.md
+CHANGELOG.md
 *.vsix
 .env
 .env.*

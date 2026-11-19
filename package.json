@@ -1,10 +1,24 @@
 {
   "name": "hebrew-mode",
   "displayName": "Hebrew Mode for Claude Code",
-  "description": "כותבים וקוראים בעברית, Claude Code מקבל ומחזיר אנגלית. תרגום דרך Gemini עם המפתח שלך, דרך הלוח.",
+  "description": "⁧כותבים וקוראים בעברית, ו-Claude Code מקבל ומחזיר אנגלית. תרגום דרך Gemini עם מפתח אישי, דרך הלוח.⁩",
   "version": "0.1.0",
   "publisher": "hebrew-mode",
   "license": "MIT",
+  "icon": "images/icon.png",
+  "preview": true,
+  "galleryBanner": {
+    "color": "#1E3A8A",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mali9868/hebrew-mode-vscode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Mali9868/hebrew-mode-vscode/issues"
+  },
+  "homepage": "https://github.com/Mali9868/hebrew-mode-vscode#readme",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -16,7 +30,9 @@
     "rtl",
     "translation",
     "claude code",
-    "gemini"
+    "gemini",
+    "עברית",
+    "תרגום"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -112,7 +128,7 @@
   "scripts": {
     "compile": "tsc -p .",
     "test": "tsc -p . && node --test out/test/*.test.js",
-    "package": "tsc -p . && vsce package --no-dependencies --allow-missing-repository"
+    "package": "tsc -p . && node scripts/build-store-docs.js && vsce package --no-dependencies --readme-path build/README.md --changelog-path build/CHANGELOG.md"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
