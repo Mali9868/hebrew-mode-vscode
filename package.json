@@ -70,6 +70,21 @@
         "command": "hebrewMode.showGuide",
         "title": "Show Guide (מדריך)",
         "category": "Hebrew Mode"
+      },
+      {
+        "command": "hebrewMode.addToGlossary",
+        "title": "Add to Glossary (הוספה למילון)",
+        "category": "Hebrew Mode"
+      },
+      {
+        "command": "hebrewMode.removeApiKey",
+        "title": "Remove API Key (מחיקת מפתח)",
+        "category": "Hebrew Mode"
+      },
+      {
+        "command": "hebrewMode.showMenu",
+        "title": "Menu (תפריט)",
+        "category": "Hebrew Mode"
       }
     ],
     "keybindings": [

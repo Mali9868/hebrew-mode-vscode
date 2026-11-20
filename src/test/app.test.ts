@@ -5,7 +5,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CLAUDE_FOCUS_COMMAND, Config, HebrewModeApp, Host, STATE_COUNTER, STATE_MODEL, STATE_PRIVACY, STATE_WELCOMED, parseGlossaryFile } from '../core/app';
+import { CLAUDE_FOCUS_COMMAND, Config, HebrewModeApp, Host, LONG_TEXT_CHARS, STATE_COUNTER, STATE_MODEL, STATE_PRIVACY, STATE_WELCOMED, parseGlossaryFile } from '../core/app';
 import { FetchLike, GeminiService } from '../core/geminiService';
 import { KEY_URL, MESSAGES } from '../core/messages';
 
@@ -104,6 +104,16 @@ class FakeHost implements Host {
   async storeKey(key: string): Promise<void> {
     this.key = key;
   }
+  envKey = false;
+  async hasStoredKey(): Promise<boolean> {
+    return this.key !== undefined && !this.envKey;
+  }
+  async deleteKey(): Promise<void> {
+    this.key = undefined;
+  }
+  hasEnvKey(): boolean {
+    return this.envKey;
+  }
   getState<T>(key: string): T | undefined {
     return this.state.get(key) as T | undefined;
   }
@@ -143,7 +153,8 @@ function gemini(host: FakeHost, reply?: (call: Call, n: number) => Reply | undef
     const out = /[\u05D0-\u05EA]/.test(sent) ? sent.replace(/[\u05D0-\u05EA]+/g, 'en') : sent.replace(/(?<!⟦)[A-Za-z]+/g, 'עב');
     return { ok: true, status: 200, text: async () => JSON.stringify({ candidates: [{ content: { parts: [{ text: out }] }, finishReason: 'STOP' }] }) };
   };
-  return { service: new GeminiService(() => host.getKey(), fetch), calls };
+  // The service uses the host's fixed clock, so date-based messages do not depend on when the tests run.
+  return { service: new GeminiService(() => host.getKey(), fetch, () => host.now()), calls };
 }
 
 function setup(reply?: (call: Call, n: number) => Reply | undefined) {
@@ -638,4 +649,52 @@ test('welcome: the key setup button opens Set API Key', async () => {
   };
   await app.welcome();
   assert.equal(host.key, 'VALID');
+});
+
+test('very long text asks before sending; cancelling sends nothing and keeps the clipboard', async () => {
+  const { host, app, generateCalls } = setup();
+  const long = 'תתקן את הבאג הזה בבקשה. '.repeat(Math.ceil(LONG_TEXT_CHARS / 20));
+  host.clipboard = long;
+  host.confirmAnswers = [false];
+  await app.translateToEnglish();
+  assert.equal(host.confirms.length, 1);
+  assert.match(host.confirms[0]!.message, /הטקסט ארוך מאוד: [\d,]+ תווים/);
+  assert.equal(generateCalls().length, 0);
+  assert.equal(host.clipboard, long);
+  assert.deepEqual(host.statuses, [MESSAGES.cancelled]);
+});
+
+test('very long text is translated after "translate anyway"; short text is not asked about', async () => {
+  const { host, app, generateCalls } = setup();
+  host.clipboard = 'תתקן את הבאג הזה בבקשה. '.repeat(Math.ceil(LONG_TEXT_CHARS / 20));
+  host.confirmAnswers = [true];
+  await app.translateToEnglish();
+  assert.equal(generateCalls().length, 1);
+  assert.ok(!/[\u05D0-\u05EA]/.test(host.clipboard));
+
+  const short = setup();
+  short.host.clipboard = HEBREW;
+  await short.app.translateToEnglish();
+  assert.equal(short.host.confirms.length, 0);
+});
+
+test('remove key: asks first, deletes on confirm, keeps the key on cancel', async () => {
+  const { host, app } = setup();
+  host.confirmAnswers = [false];
+  await app.removeApiKey();
+  assert.equal(host.key, KEY, 'cancel keeps the key');
+  host.confirmAnswers = [true];
+  await app.removeApiKey();
+  assert.equal(host.key, undefined);
+  assert.deepEqual(host.infos, [MESSAGES.keyRemoved]);
+  await app.removeApiKey();
+  assert.deepEqual(host.infos, [MESSAGES.keyRemoved, MESSAGES.noKeyToRemove]);
+});
+
+test('remove key: a key that comes only from the environment variable is explained, not "deleted"', async () => {
+  const { host, app } = setup();
+  host.envKey = true;
+  await app.removeApiKey();
+  assert.deepEqual(host.infos, [MESSAGES.keyFromEnvOnly]);
+  assert.equal(host.confirms.length, 0);
 });

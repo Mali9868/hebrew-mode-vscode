@@ -6,6 +6,7 @@
 import * as vscode from 'vscode';
 import { CLAUDE_FOCUS_COMMAND, Config, HebrewModeApp, Host, parseGlossaryFile } from './core/app';
 import { GeminiService } from './core/geminiService';
+import { addGlossaryTerm } from './core/glossary';
 import { rtlIsolate } from './core/bidi';
 import { KEY_URL, MESSAGES } from './core/messages';
 import { ModelTier } from './core/models';
@@ -135,6 +136,20 @@ class VsCodeHost implements Host {
   async storeKey(key: string): Promise<void> {
     await this.ctx.secrets.store(SECRET_KEY, key);
   }
+  async hasStoredKey(): Promise<boolean> {
+    const stored = await this.ctx.secrets.get(SECRET_KEY);
+    return !!stored && stored.trim() !== '';
+  }
+
+  async deleteKey(): Promise<void> {
+    await this.ctx.secrets.delete(SECRET_KEY);
+  }
+
+  hasEnvKey(): boolean {
+    const fromEnv = process.env[ENV_KEY];
+    return !!fromEnv && fromEnv.trim() !== '';
+  }
+
 
   getState<T>(key: string): T | undefined {
     return this.ctx.globalState.get<T>(key);
@@ -187,7 +202,7 @@ class CounterStatus implements vscode.Disposable {
   private readonly timer: NodeJS.Timeout;
 
   constructor(private readonly app: HebrewModeApp) {
-    this.item.command = { title: 'Hebrew Mode', command: 'workbench.action.openSettings', arguments: ['hebrewMode'] };
+    this.item.command = { title: 'Hebrew Mode', command: 'hebrewMode.showMenu' };
     this.refresh();
     this.item.show();
     // Pick up the Pacific-midnight reset without user action.
@@ -212,6 +227,65 @@ class CounterStatus implements vscode.Disposable {
   }
 }
 
+/** The status bar menu: every action in one place, so nobody has to remember the shortcuts. */
+async function showMenu(): Promise<void> {
+  const mac = process.platform === 'darwin';
+  const key = (letter: string): string => (mac ? `Control+Option+${letter}` : `Ctrl+Alt+${letter}`);
+  const items: Array<vscode.QuickPickItem & { command: string; args?: unknown[] }> = [
+    { label: `$(arrow-swap) ${MESSAGES.menuToEnglish}`, description: key('E'), command: 'hebrewMode.translateToEnglish' },
+    { label: `$(preview) ${MESSAGES.menuToHebrew}`, description: key('H'), command: 'hebrewMode.translateToHebrew' },
+    { label: `$(history) ${MESSAGES.menuRestore}`, description: key('Z'), command: 'hebrewMode.restoreHebrew' },
+    { label: `$(book) ${MESSAGES.menuGuide}`, command: 'hebrewMode.showGuide' },
+    { label: `$(add) ${MESSAGES.menuGlossary}`, command: 'hebrewMode.addToGlossary' },
+    { label: `$(key) ${MESSAGES.menuSetKey}`, command: 'hebrewMode.setApiKey' },
+    { label: `$(trash) ${MESSAGES.menuRemoveKey}`, command: 'hebrewMode.removeApiKey' },
+    { label: `$(settings-gear) ${MESSAGES.menuSettings}`, command: 'workbench.action.openSettings', args: ['hebrewMode'] },
+  ];
+  const pick = await vscode.window.showQuickPick(items, { title: 'Hebrew Mode', placeHolder: MESSAGES.menuPlaceholder });
+  if (pick) await vscode.commands.executeCommand(pick.command, ...(pick.args ?? []));
+}
+
+/** "Hebrew Mode: Add to Glossary". Adds a term to the personal or the project glossary setting. */
+async function addToGlossary(host: VsCodeHost): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  const selected = editor && !editor.selection.isEmpty ? editor.document.getText(editor.selection).trim() : '';
+  const term = await vscode.window.showInputBox({
+    title: MESSAGES.glossaryTitle,
+    prompt: rtlIsolate(MESSAGES.glossaryPrompt),
+    value: addGlossaryTerm([], selected).ok ? selected : '',
+    ignoreFocusOut: true,
+    validateInput: (value) => {
+      const result = addGlossaryTerm([], value);
+      return result.ok || result.reason === 'empty' ? undefined : rtlIsolate(MESSAGES.glossaryInvalidTerm);
+    },
+  });
+  if (!term || term.trim() === '') return;
+
+  let target = vscode.ConfigurationTarget.Global;
+  if (vscode.workspace.workspaceFolders?.length) {
+    const choice = await vscode.window.showQuickPick(
+      [
+        { label: MESSAGES.glossaryGlobal, target: vscode.ConfigurationTarget.Global },
+        { label: MESSAGES.glossaryWorkspace, target: vscode.ConfigurationTarget.Workspace },
+      ],
+      { title: MESSAGES.glossaryTitle, placeHolder: MESSAGES.glossaryWhere },
+    );
+    if (!choice) return;
+    target = choice.target;
+  }
+
+  const config = vscode.workspace.getConfiguration('hebrewMode');
+  const inspected = config.inspect<string[]>('glossary');
+  const current = (target === vscode.ConfigurationTarget.Global ? inspected?.globalValue : inspected?.workspaceValue) ?? [];
+  const result = addGlossaryTerm(current, term);
+  if (!result.ok) {
+    void host.info(result.reason === 'duplicate' ? MESSAGES.glossaryDuplicate : MESSAGES.glossaryInvalidTerm);
+    return;
+  }
+  await config.update('glossary', result.list, target);
+  void host.info(MESSAGES.glossaryAdded(result.term));
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   const panel = new TranslationPanel();
   const guide = new GuidePanel();
@@ -230,6 +304,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('hebrewMode.translateToHebrew', () => app.translateToHebrew()),
     vscode.commands.registerCommand('hebrewMode.setApiKey', () => app.setApiKey()),
     vscode.commands.registerCommand('hebrewMode.showGuide', () => host.showGuide()),
+    vscode.commands.registerCommand('hebrewMode.removeApiKey', () => app.removeApiKey()),
+    vscode.commands.registerCommand('hebrewMode.addToGlossary', () => addToGlossary(host)),
+    vscode.commands.registerCommand('hebrewMode.showMenu', () => showMenu()),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('hebrewMode')) status.refresh();
     }),

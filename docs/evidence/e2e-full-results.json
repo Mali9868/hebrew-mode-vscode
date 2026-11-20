@@ -92,7 +92,7 @@
   {
     "name": "E2 daily quota with Israel time: message shown, clipboard kept",
     "pass": true,
-    "evidence": "[\"⁧המכסה היומית נגמרה. היא מתחדשת ב-20.11 בשעה 10:00 שעון ישראל.⁩\"] attempts=1"
+    "evidence": "[\"⁧המכסה היומית נגמרה. היא מתחדשת ב-21.11 בשעה 10:00 שעון ישראל.⁩\"] attempts=1"
   },
   {
     "name": "E3 network failure: message shown, clipboard kept",
@@ -142,7 +142,27 @@
   {
     "name": "GD1 guide opens right-to-left with usage steps, the key link and a key setup button",
     "pass": true,
-    "evidence": "{\"dir\":\"rtl\",\"chars\":3495,\"links\":[\"https://aistudio.google.com/api-keys\",\"https://aistudio.google.com/api-keys\"]}"
+    "evidence": "{\"dir\":\"rtl\",\"chars\":3937,\"links\":[\"https://aistudio.google.com/api-keys\",\"https://aistudio.google.com/api-keys\"]}"
+  },
+  {
+    "name": "M1 status bar menu lists every action",
+    "pass": true,
+    "evidence": "{\"menuTitle\":\"Hebrew Mode\",\"menuPlaceholder\":\"מה לעשות?\",\"menuItems\":[\"תרגום לאנגליתCtrl+Alt+E\",\"תרגום לעבריתCtrl+Alt+Hrecently used\",\"שחזור הטיוטה העבריתCtrl+Alt+Zrecently used\",\"מדריךsimilar commands\",\"הוספה למילוןsimilar commands\",\"הגדרת מפתחrecently used\",\"מחיקת מפתחsimilar commands\",\"הגדרותsimilar commands\"]}"
+  },
+  {
+    "name": "GL2 \"Add to Glossary\" saves the term and it is not sent for translation",
+    "pass": true,
+    "evidence": "{\"glossaryNotes\":[\"⁧המונח \\\"מסך הבית\\\" נוסף למילון.⁩\"],\"glOut\":\"word word מסך הבית word\"}"
+  },
+  {
+    "name": "LT1 very long text asks first; cancel sends nothing",
+    "pass": true,
+    "evidence": "ביטוללתרגם בכל זאת⁧הטקסט ארוך מאוד: 19,200 תווים. לשלוח אותו לתרגום?⁩⁧תרגום ארוך לוקח יותר זמן וצורך יותר מהמכסה. אולי ה"
+  },
+  {
+    "name": "R1 \"Remove API Key\" deletes the key after confirmation; the next translation asks for a key",
+    "pass": true,
+    "evidence": "{\"removedNotes\":[\"⁧המפתח נמחק מ-VS Code.⁩\"],\"afterRemoveNotes\":[\"⁧לא הוגדר מפתח Gemini. פותחת את הגדרת המפתח.⁩\"]}"
   },
   {
     "name": "H1 workspace setting disables sending; status bar shows it",

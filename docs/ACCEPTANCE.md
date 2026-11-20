@@ -23,11 +23,11 @@
 
 ## איך נבדק
 
-1. **בדיקות יחידה:** `npm test` מריץ 132 בדיקות, וכולן עוברות.
+1. **בדיקות יחידה:** `npm test` מריץ 138 בדיקות, וכולן עוברות.
 
    | קובץ | בדיקות | מה נבדק |
    | --- | --- | --- |
-   | `src/test/app.test.ts` | 42 | הפקודות, כל שורה בטבלת התקלות, ביטול, הודעת הפתיחה וההגדרה `focusClaude`, מול host מדומה ו-fetch מדומה |
+   | `src/test/app.test.ts` | 46 | הפקודות, כל שורה בטבלת התקלות, ביטול, טקסט ארוך, מחיקת מפתח, הודעת הפתיחה וההגדרה `focusClaude`, מול host מדומה ו-fetch מדומה |
    | `src/test/contentProtector.test.ts` | 27 | סמנים מוגנים, עברית ואנגלית מעורבות, Markdown מקונן, פיסוק עברי, סמנים שהמודל השמיט, שכפל או שינה, זיהוי כיוון |
    | `src/test/geminiService.test.ts` | 22 | header של המפתח, temperature, thinking, timeout, ניסיון חוזר, ביטול, מיפוי שגיאות (כולל עומס ומיקום), מטמון, בחירת מודל |
    | `src/test/markdown.test.ts` | 14 | רינדור בטוח, קוד LTR, CSP של חלון התרגום וחלון המדריך |
@@ -36,16 +36,17 @@
    | `src/test/models.test.ts` | 4 | בחירת ה-Flash-Lite היציב החדש ביותר |
    | `src/test/storeDocs.test.ts` | 6 | ה-README לדף התוסף (סימני כיוון) והמדריך שנגזר ממנו |
    | `src/test/bidi.test.ts` | 3 | הודעות בעברית, כולל כתובות, בממשק השמאל-לימין של VS Code |
+   | `src/test/glossary.test.ts` | 2 | הוספת מונח למילון: שורה אחת, עד 60 תווים, בלי כפילויות |
 
 2. **קצה לקצה ב-VS Code אמיתי:** ה-VSIX הארוז הותקן ב-code-server 4.145.2 (VS Code 1.145.2) ונבדק דרך Chromium עם Playwright: קיצורי מקלדת אמיתיים, לוח אמיתי, דיאלוגים, הודעות וחלון התרגום.
 
    | ריצה | סקריפט | תנאים | תוצאה |
    | --- | --- | --- | --- |
    | א | `test/e2e/run-e2e-real-api.js` | בלי Claude Code, מול ה-API האמיתי של Gemini | 15/15 ([תוצאות](evidence/e2e-real-api-results.json)) |
-   | ב | `test/e2e/run-e2e.js` | עם תוסף הבדיקה `test/e2e/harness`: תשובות Gemini קבועות לפי קובץ מצב, ותחליף ל-`claude-vscode.focus` | 30/30 ([תוצאות](evidence/e2e-full-results.json)) |
+   | ב | `test/e2e/run-e2e.js` | עם תוסף הבדיקה `test/e2e/harness`: תשובות Gemini קבועות לפי קובץ מצב, ותחליף ל-`claude-vscode.focus` | 34/34 ([תוצאות](evidence/e2e-full-results.json)) |
    | ג | `test/e2e/run-e2e-no-focus.js` | תוסף הבדיקה בלי התחליף ל-`claude-vscode.focus` | 1/1 |
 
-   תוסף הבדיקה לא נכלל ב-VSIX (`test/**` ב-`.vscodeignore`). ריצה ב בודקת גם את הודעת הפתיחה (W1), הקישור והכפתור בחלון הזנת המפתח (K1), עומס ב-Gemini (E7), ביטול תרגום (E8) והמדריך בתוך VS Code (GD1).
+   תוסף הבדיקה לא נכלל ב-VSIX (`test/**` ב-`.vscodeignore`). ריצה ב בודקת גם את הודעת הפתיחה (W1), הקישור והכפתור בחלון הזנת המפתח (K1), עומס ב-Gemini (E7), ביטול תרגום (E8), המדריך בתוך VS Code (GD1), התפריט בשורת הסטטוס (M1), הוספה למילון בפקודה (GL2), אישור לפני טקסט ארוך מאוד (LT1) ומחיקת המפתח (R1).
 
 ## פירוט הקריטריונים
 

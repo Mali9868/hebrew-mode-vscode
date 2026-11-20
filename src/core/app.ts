@@ -27,6 +27,9 @@ export const STATE_WELCOMED = 'hebrewMode.welcomed';
 /** Ctrl+Alt+H refuses text that is at least this Hebrew (it is already Hebrew). */
 const ALREADY_HEBREW_RATIO = 0.5;
 
+/** Above this many characters to send, ask first: maybe a whole file was copied by mistake. */
+export const LONG_TEXT_CHARS = 15_000;
+
 export interface Config {
   enabled: boolean;
   tier: ModelTier;
@@ -61,6 +64,11 @@ export interface Host {
   /** SecretStorage first, then the HEBREW_MODE_GEMINI_KEY environment variable. */
   getKey(): Promise<string | undefined>;
   storeKey(key: string): Promise<void>;
+  /** True when a key is saved in SecretStorage (not counting the environment variable). */
+  hasStoredKey(): Promise<boolean>;
+  deleteKey(): Promise<void>;
+  /** True when HEBREW_MODE_GEMINI_KEY is set. */
+  hasEnvKey(): boolean;
   getState<T>(key: string): T | undefined;
   setState(key: string, value: unknown): Promise<void>;
   config(): Promise<Config>;
@@ -142,6 +150,19 @@ export class HebrewModeApp {
       });
     }
     return this.settingUp;
+  }
+
+  /** "Hebrew Mode: Remove API Key". Deletes the key from SecretStorage after a confirmation. */
+  async removeApiKey(): Promise<void> {
+    if (!(await this.host.hasStoredKey())) {
+      void this.host.info(this.host.hasEnvKey() ? MESSAGES.keyFromEnvOnly : MESSAGES.noKeyToRemove);
+      return;
+    }
+    const remove = await this.host.confirm('warning', MESSAGES.removeKeyConfirm, MESSAGES.removeKeyDetail, MESSAGES.removeKeyButton);
+    if (!remove) return;
+    await this.host.deleteKey();
+    this.gemini.clearCache();
+    void this.host.info(this.host.hasEnvKey() ? MESSAGES.keyRemovedEnvStill : MESSAGES.keyRemoved);
   }
 
   /** Once after installation: say what is needed to start, with buttons for key setup and the guide. */
@@ -231,15 +252,25 @@ export class HebrewModeApp {
     }
 
     // 2. Nothing but code: nothing to send.
-    if (protect(text, { glossary: cfg.glossary, extraSpans, direction }).onlyProtected) {
+    const prepared = protect(text, { glossary: cfg.glossary, extraSpans, direction });
+    if (prepared.onlyProtected) {
       void this.host.info(MESSAGES.nothingToTranslate);
       return undefined;
     }
 
-    // 3. Key and privacy notice.
+    // 3. Very long text: ask first (maybe a whole file was copied by mistake).
+    if (prepared.text.length > LONG_TEXT_CHARS) {
+      const send = await this.host.confirm('warning', MESSAGES.longText(prepared.text.length), MESSAGES.longTextDetail, MESSAGES.longTextButton);
+      if (!send) {
+        this.host.status(MESSAGES.cancelled);
+        return undefined;
+      }
+    }
+
+    // 4. Key and privacy notice.
     if (!(await this.ensureReady())) return undefined;
 
-    // 4. Translate. A bad key opens setup and retries once; a retired auto-picked model is re-picked once.
+    // 5. Translate. A bad key opens setup and retries once; a retired auto-picked model is re-picked once.
     for (let attempt = 0; ; attempt++) {
       try {
         const model = await this.resolveModel(cfg);

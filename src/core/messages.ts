@@ -60,6 +60,41 @@ export const MESSAGES = {
   guideTitle: 'Hebrew Mode: מדריך',
   guideMissing: 'המדריך לא נמצא בהתקנה. ההסבר המלא נמצא בדף התוסף.',
 
+  // Long text guard
+  longText: (chars: number): string => `הטקסט ארוך מאוד: ${chars.toLocaleString('en-US')} תווים. לשלוח אותו לתרגום?`,
+  longTextDetail: 'תרגום ארוך לוקח יותר זמן וצורך יותר מהמכסה. אולי הועתק בטעות קובץ שלם?',
+  longTextButton: 'לתרגם בכל זאת',
+
+  // Remove key
+  removeKeyConfirm: 'למחוק את מפתח Gemini מ-VS Code?',
+  removeKeyDetail: 'אחרי המחיקה התרגום לא יעבוד עד שיוגדר מפתח חדש. המפתח עצמו נשאר פעיל ב-Google AI Studio, ושם אפשר לבטל אותו.',
+  removeKeyButton: 'מחיקה',
+  keyRemoved: 'המפתח נמחק מ-VS Code.',
+  keyRemovedEnvStill: 'המפתח נמחק. משתנה הסביבה HEBREW_MODE_GEMINI_KEY עדיין בשימוש.',
+  noKeyToRemove: 'אין מפתח שמור ב-VS Code.',
+  keyFromEnvOnly: 'אין מפתח שמור. המפתח מגיע ממשתנה הסביבה HEBREW_MODE_GEMINI_KEY.',
+
+  // Glossary
+  glossaryTitle: 'Hebrew Mode: הוספה למילון',
+  glossaryPrompt: 'מונח שלא יתורגם בשום כיוון, למשל שם של קומפוננטה או של שירות.',
+  glossaryWhere: 'לאיזה מילון להוסיף?',
+  glossaryGlobal: 'המילון האישי (בכל הפרויקטים)',
+  glossaryWorkspace: 'המילון של הפרויקט הזה',
+  glossaryAdded: (term: string): string => `המונח "${term}" נוסף למילון.`,
+  glossaryDuplicate: 'המונח כבר נמצא במילון.',
+  glossaryInvalidTerm: 'מונח צריך להיות שורה אחת, עד 60 תווים.',
+
+  // Status bar menu
+  menuPlaceholder: 'מה לעשות?',
+  menuToEnglish: 'תרגום לאנגלית',
+  menuToHebrew: 'תרגום לעברית',
+  menuRestore: 'שחזור הטיוטה העברית',
+  menuGuide: 'מדריך',
+  menuSetKey: 'הגדרת מפתח',
+  menuRemoveKey: 'מחיקת מפתח',
+  menuGlossary: 'הוספה למילון',
+  menuSettings: 'הגדרות',
+
   // Panel
   panelTitle: 'תרגום לעברית',
   copy: 'העתקה',

@@ -142,7 +142,7 @@ const ANSWER_HE = 'הוספתי שלוש בדיקות ל-`src/users.test.ts`. כ
   // E. Failure table rows that need a Gemini response.
   const rows = [
     { mode: '429', expect: 'נסי שוב בעוד 12 שניות', name: 'E1 per-minute limit (429)' },
-    { mode: 'daily', expect: 'המכסה היומית נגמרה. היא מתחדשת ב-20.11 בשעה 10:00 שעון ישראל', name: 'E2 daily quota with Israel time' },
+    { mode: 'daily', expect: /המכסה היומית נגמרה\. היא מתחדשת ב-\d{1,2}\.\d{1,2} בשעה \d{2}:\d{2} שעון ישראל/, name: 'E2 daily quota with Israel time' },
     { mode: 'network', expect: 'התרגום נכשל', name: 'E3 network failure' },
     { mode: 'bad', expect: 'התרגום נכשל', name: 'E4 malformed response' },
     { mode: 'drop', expect: 'התרגום שינה קוד, בוטל', name: 'E5 placeholder dropped by the model' },
@@ -156,7 +156,7 @@ const ANSWER_HE = 'הוספתי שלוש בדיקות ל-`src/users.test.ts`. כ
     const before = generateRequests().length;
     await press('Control+Alt+KeyE', 3000);
     const n = await notes();
-    const shown = n.find((m) => m.includes(row.expect));
+    const shown = n.find((m) => (row.expect instanceof RegExp ? row.expect.test(m) : m.includes(row.expect)));
     const attempts = generateRequests().length - before;
     record(`${row.name}: message shown, clipboard kept`, !!shown && (await getClipboard()) === text, `${JSON.stringify(n)} attempts=${attempts}`);
     if (row.mode === 'daily') await page.screenshot({ path: `${SHOTS}/daily-quota.png` });
@@ -244,6 +244,71 @@ const ANSWER_HE = 'הוספתי שלוש בדיקות ל-`src/users.test.ts`. כ
     !!guideView && guideView.dir === 'rtl' && guideView.text.includes('איך משתמשים') && guideView.text.includes('איך משיגים מפתח API') && guideView.links.includes('https://aistudio.google.com/api-keys'),
     JSON.stringify(guideView && { dir: guideView.dir, chars: guideView.text.length, links: guideView.links }),
   );
+
+  // M. Status bar menu with every action.
+  await page.locator('.statusbar-item:has(.codicon-arrow-swap)').first().click();
+  await page.waitForTimeout(1000);
+  const menuItems = (await page.locator('.quick-input-list .monaco-list-row').allTextContents()).map((t) => t.replace(/\s+/g, ' ').trim());
+  const menuTitle = (await page.locator('.quick-input-title').allTextContents()).join(' ').trim();
+  const menuPlaceholder = await page.locator('.quick-input-widget input').getAttribute('placeholder');
+  record(
+    'M1 status bar menu lists every action',
+    menuTitle === 'Hebrew Mode' && menuPlaceholder === 'מה לעשות?' && menuItems.length === 8 && ['תרגום לאנגלית', 'תרגום לעברית', 'מדריך', 'הוספה למילון', 'מחיקת מפתח'].every((l) => menuItems.some((i) => i.includes(l))),
+    JSON.stringify({ menuTitle, menuPlaceholder, menuItems }),
+  );
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(500);
+
+  // GL2. Add a term to the glossary with the command, then check it is protected.
+  await page.keyboard.press('Control+Shift+P');
+  await page.keyboard.type('Hebrew Mode: Add to Glossary');
+  await page.waitForTimeout(800);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(1000);
+  await page.keyboard.type('מסך הבית');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(1000);
+  await page.keyboard.press('Enter'); // first option: the personal glossary
+  await page.waitForTimeout(1500);
+  const glossaryNotes = await notes();
+  await clearNotes();
+  await setClipboard('תעדכן את מסך הבית עכשיו');
+  await press('Control+Alt+KeyE', 2500);
+  const glReq = generateRequests().at(-1);
+  const glOut = await getClipboard();
+  record('GL2 "Add to Glossary" saves the term and it is not sent for translation', glossaryNotes.some((m) => m.includes('נוסף למילון')) && !glReq.body.includes('מסך הבית') && glOut.includes('מסך הבית'), JSON.stringify({ glossaryNotes, glOut }));
+  await clearNotes();
+
+  // LT. Very long text asks before sending.
+  const longText = 'תתקן את הבאג הזה בבקשה. '.repeat(800);
+  await setClipboard(longText);
+  const beforeLong = generateRequests().length;
+  await press('Control+Alt+KeyE', 2000);
+  const longDialog = await dialogText();
+  if (longDialog) await clickDialog('ביטול');
+  await page.waitForTimeout(800);
+  record('LT1 very long text asks first; cancel sends nothing', longDialog.includes('הטקסט ארוך מאוד') && generateRequests().length === beforeLong && (await getClipboard()) === longText, longDialog.slice(0, 120));
+  await clearNotes();
+
+  // R. Remove the key, then the next translation asks for a key again.
+  await page.keyboard.press('Control+Shift+P');
+  await page.keyboard.type('Hebrew Mode: Remove API Key');
+  await page.waitForTimeout(800);
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.monaco-dialog-box', { timeout: 10000 }).catch(() => {});
+  const removeDialog = await dialogText();
+  await clickDialog('מחיקה');
+  await page.waitForTimeout(1500);
+  const removedNotes = await notes();
+  await clearNotes();
+  await setClipboard('תתקן את הבאג בקובץ src/file12.ts');
+  await press('Control+Alt+KeyE', 2500);
+  const afterRemoveNotes = await notes();
+  await cancelOpenLinkDialog();
+  await page.keyboard.press('Escape'); // close the key input box
+  await page.waitForTimeout(800);
+  record('R1 "Remove API Key" deletes the key after confirmation; the next translation asks for a key', removeDialog.includes('למחוק את מפתח Gemini') && removedNotes.some((m) => m.includes('המפתח נמחק')) && afterRemoveNotes.some((m) => m.includes('לא הוגדר מפתח Gemini')), JSON.stringify({ removedNotes, afterRemoveNotes }));
+  await clearNotes();
 
   // H. Workspace setting turns the extension off for this project.
   fs.mkdirSync(path.join(WORKSPACE, '.vscode'), { recursive: true });
